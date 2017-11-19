@@ -1,0 +1,1 @@
+- go into each pkg and run `go test`
