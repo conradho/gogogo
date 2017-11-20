@@ -7,30 +7,30 @@ import (
 	"net"
 )
 
+func CheckError(err error, msg string) {
+	if err != nil {
+		log.Fatal(msg, err)
+	}
+}
+
 func Forward(port int, target string) {
 	log.Printf("About to forward traffic from port %d to %s", port, target)
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Fatalf("could not start server on %d: %v", port, err)
-	}
+	CheckError(err, fmt.Sprintf("could not start server on %d: %v", port, err))
 
 	for {
-		ForwardIncomingConnection(l, target)
+		handleConnection(l, target)
 	}
 }
 
-func ForwardIncomingConnection(l net.Listener, target string) {
+func handleConnection(l net.Listener, target string) {
 	inboundConn, err := l.Accept()
-	if err != nil {
-		log.Fatal("could not accept client connection", err)
-	}
-	log.Printf("client '%v' connected!\n", inboundConn.RemoteAddr())
+	CheckError(err, "could not accept client connection")
+	log.Printf("A new client '%v' connected!\n", inboundConn.RemoteAddr())
 
 	outboundConn, err := net.Dial("tcp", target)
-	if err != nil {
-		log.Fatal("could not connect to target", err)
-	}
+	CheckError(err, "could not connect to target")
 	log.Printf("outbound connection to server %v established!\n", outboundConn.RemoteAddr())
 
 	go func() {
