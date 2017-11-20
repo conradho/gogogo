@@ -1,1 +1,5 @@
 - go into each pkg and run `go test`
+- one example of how to try out the portforwarder:
+    - cd cmd/portforward/; go build && ./portforward -port=8889 -target=localhost:8888
+    - python3 -m http.server 8888
+    - curl localhost:8889
