@@ -1,36 +1,25 @@
 package portforward
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
 )
 
-func CheckError(err error, msg string) {
-	if err != nil {
-		log.Fatal(msg, err)
-	}
+// ConnectionForwarder handles all connections by forwarding it to the target.
+// It implements the connectionHandler interface
+type ConnectionForwarder struct {
+	Target string
 }
 
-func Forward(port int, target string) {
-	log.Printf("About to forward traffic from port %d to %s", port, target)
-
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	CheckError(err, fmt.Sprintf("could not start server on %d: %v", port, err))
-
-	for {
-		handleConnection(l, target)
-	}
-}
-
-func handleConnection(l net.Listener, target string) {
+func (f ConnectionForwarder) handleConnection(l net.Listener) {
+	log.Printf("About to forward traffic to %s", f.Target)
 	inboundConn, err := l.Accept()
-	CheckError(err, "could not accept client connection")
+	checkError(err, "could not accept client connection")
 	log.Printf("A new client '%v' connected!\n", inboundConn.RemoteAddr())
 
-	outboundConn, err := net.Dial("tcp", target)
-	CheckError(err, "could not connect to target")
+	outboundConn, err := net.Dial("tcp", f.Target)
+	checkError(err, "could not connect to target")
 	log.Printf("outbound connection to server %v established!\n", outboundConn.RemoteAddr())
 
 	go func() {

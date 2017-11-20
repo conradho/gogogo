@@ -11,5 +11,7 @@ func main() {
 		targetPtr = flag.String("target", "localhost:1234", "target to forward to")
 	)
 	flag.Parse()
-	portforward.Forward(*portPtr, *targetPtr)
+
+	f := portforward.ConnectionForwarder{*targetPtr}
+	portforward.Loop(*portPtr, f)
 }
