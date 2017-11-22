@@ -12,7 +12,9 @@ import (
 // ConnectionForwarder handles all connections by forwarding it to the target.
 // It implements the connectionHandler interface
 type ConnectionForwarder struct {
-	Target string
+	Target          string
+	InboundLogPath  string
+	OutboundLogPath string
 }
 
 func (forwarder ConnectionForwarder) handleConnection(l net.Listener) {
@@ -28,14 +30,14 @@ func (forwarder ConnectionForwarder) handleConnection(l net.Listener) {
 	go func() {
 		// send all inbound traffic to outbound connection and also tee to log file
 		teedTraffic := io.TeeReader(inboundConn, outboundConn)
-		appendStreamToFile(teedTraffic, "inbound.log")
+		appendStreamToFile(teedTraffic, forwarder.InboundLogPath)
 		err := inboundConn.Close()
 		check(err, fmt.Sprint("Could not close inbound connection ", inboundConn.RemoteAddr()))
 	}()
 	go func() {
 		// send all outbound traffic to inbound connection and also tee to log file
 		teedTraffic := io.TeeReader(outboundConn, inboundConn)
-		appendStreamToFile(teedTraffic, "outbound.log")
+		appendStreamToFile(teedTraffic, forwarder.OutboundLogPath)
 		err := outboundConn.Close()
 		check(err, fmt.Sprint("Could not close outbound connection ", outboundConn.RemoteAddr()))
 	}()

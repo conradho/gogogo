@@ -12,7 +12,7 @@ func main() {
 	)
 	flag.Parse()
 
-	f := portforward.ConnectionForwarder{*targetPtr}
+	f := portforward.ConnectionForwarder{*targetPtr, "inbound.log", "outbound.log"}
 	portforward.Loop(*portPtr, f)
 
 }
