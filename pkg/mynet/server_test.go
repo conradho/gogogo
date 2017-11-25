@@ -1,6 +1,7 @@
 package portforward
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"testing"
@@ -13,41 +14,57 @@ type mockHandler struct {
 }
 
 func (h mockHandler) handleConnection(l net.Listener) {
-	// block until there is an inbound connection we can accept
-	h.t.Log("waiting to accept inbound connection", l)
+	// blocks until there is an inbound connection we can accept
+	h.t.Log("Waiting to process a new inbound connection", l)
 	l.Accept()
 	h.c <- true
 }
 
 func TestLoopListensOnPortAndHandlesConnection(t *testing.T) {
-	c := make(chan bool, 5)
-	h := mockHandler{c, t}
+	processed := make(chan bool, 3)
+	h := mockHandler{processed, t}
 
-	if len(c) != 0 {
-		t.Errorf("should not have called handler yet. called %d times", len(c))
+	if len(processed) != 0 {
+		t.Errorf("should not have called handler yet. called %d times", len(processed))
 	}
 
-	go Loop(9268, h)
-	waitForServerLoopToStartUp(t)
+	s := Server{make(chan bool, 1)}
+	go s.Loop(9268, h)
+	makeSuccessfulConnection(t, 9268)
 
-	if len(c) != 1 {
-		t.Errorf("called handler %d times. expected 1", len(c))
+	if len(processed) != 1 {
+		t.Errorf("called handler %d times. expected 1", len(processed))
 	}
 }
 
-func waitForServerLoopToStartUp(t *testing.T) {
+func TestLoopHandlesMultipleConnections(t *testing.T) {
+	processed := make(chan bool, 3)
+	h := mockHandler{processed, t}
+
+	s := Server{make(chan bool, 1)}
+	go s.Loop(8989, h)
+
+	for i := 0; i < 5; i++ {
+		makeSuccessfulConnection(t, 8989)
+	}
+}
+
+func makeSuccessfulConnection(t *testing.T, port int) {
 	// our mockHandler implementation could cause Get() to hang waiting for a response
 	client := http.Client{
-		Timeout: time.Duration(1 * time.Second),
+		Timeout: time.Duration(500 * time.Millisecond),
 	}
-	for {
-		t.Log("about to hit")
-		time.Sleep(100 * time.Millisecond)
-		_, err := client.Get("http://127.0.0.1:9268/")
-		t.Log("err was", err)
-		if opError, ok := err.(*net.OpError); !(ok && opError.Op == "read") {
-			// error is a connection refused error because server is not listening yet
-			break
+	t.Log("Attempting to connect to the server")
+	for i := 0; i < 10; i++ {
+		_, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
+		t.Logf("response err for %d-th request was %v", i, err)
+		if err == nil {
+			return
 		}
+		if netError, ok := err.(net.Error); ok && netError.Timeout() {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
+	t.Fatal("Unable to make a successful connection")
 }

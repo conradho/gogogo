@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/conradho/gogogo/pkg/mynet"
 )
 
@@ -13,6 +14,8 @@ func main() {
 	flag.Parse()
 
 	f := portforward.ConnectionForwarder{*targetPtr, "inbound.log", "outbound.log"}
-	portforward.Loop(*portPtr, f)
+
+	s := portforward.Server{make(chan bool, 1)}
+	s.Loop(*portPtr, f)
 
 }
